@@ -13,6 +13,7 @@ Windows utility written in PowerShell with a desktop GUI for:
 - `PCOptimizer.ps1`: core optimizer logic and CLI entry point
 - `PCOptimizer.GUI.ps1`: Windows desktop interface
 - `Run-PCOptimizer.bat`: local launcher
+- `Install-PCOptimizer.bat`: double-click bootstrap installer
 - `version.json`: current app version
 - `appsettings.json`: GitHub release/update settings
 - `scripts\Install-PCOptimizer.ps1`: installs the app for the current user
@@ -57,6 +58,12 @@ From the project folder:
 powershell -ExecutionPolicy Bypass -File .\scripts\Install-PCOptimizer.ps1
 ```
 
+Or double-click:
+
+```text
+Install-PCOptimizer.bat
+```
+
 Default install location:
 
 ```text
@@ -87,6 +94,7 @@ Then upload the three files it prints:
 - `PCOptimizer-v0.1.1.zip`
 - `latest.json`
 - `Install-PCOptimizer.ps1`
+- `Install-PCOptimizer.bat`
 
 If you do not want it to push yet:
 

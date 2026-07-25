@@ -229,6 +229,33 @@ function Refresh-Overview {
     $script:ChannelValueLabel.Text = $identity.Channel
     $script:PublisherValueLabel.Text = if ([string]::IsNullOrWhiteSpace($identity.Publisher)) { "Unspecified" } else { $identity.Publisher }
     $script:AdminValueLabel.Text = if (Test-IsAdministrator) { "Yes" } else { "No" }
+
+    $junkTotal = ((@(Get-JunkReport)) | Measure-Object -Property Size -Sum).Sum
+    $startupCount = (@(Get-StartupItems)).Count
+    $privacyCount = ((@(Get-PrivacyReport)) | Measure-Object -Property Count -Sum).Sum
+
+    if ($script:OptimizeStatsLabel) {
+        $script:OptimizeStatsLabel.Text = "Junk ready to clean: $(Format-Bytes ([long]$junkTotal))   |   Startup items detected: $startupCount   |   Local traces found: $privacyCount"
+    }
+    if ($script:OptimizeHintLabel) {
+        $script:OptimizeHintLabel.Text = "Quick Optimize safely removes junk files and local privacy traces. It does not disable startup apps or touch personal duplicates without your input."
+    }
+}
+
+function Invoke-QuickOptimize {
+    $junkBefore = ((@(Get-JunkReport)) | Measure-Object -Property Size -Sum).Sum
+    $privacyBefore = ((@(Get-PrivacyReport)) | Measure-Object -Property Count -Sum).Sum
+
+    $null = Invoke-JunkCleanup
+    $null = Clear-PrivacyTraces
+
+    $junkAfter = ((@(Get-JunkReport)) | Measure-Object -Property Size -Sum).Sum
+    $privacyAfter = ((@(Get-PrivacyReport)) | Measure-Object -Property Count -Sum).Sum
+
+    [pscustomobject]@{
+        ReclaimedBytes = ([long]$junkBefore - [long]$junkAfter)
+        ClearedTraces = ([int]$privacyBefore - [int]$privacyAfter)
+    }
 }
 
 function Refresh-JunkTab {
@@ -333,6 +360,11 @@ $subtitleLabel.AutoSize = $true
 $subtitleLabel.Font = New-UiFont -Family "Segoe UI" -Size 10.0
 $headerPanel.Controls.Add($subtitleLabel)
 
+$headerOptimizeButton = New-FlatButton -Text "Optimize Now" -Width 170 -Height 46 -BackColor $script:Theme.Accent
+$headerOptimizeButton.Location = New-Object System.Drawing.Point(1060, 24)
+$headerOptimizeButton.Font = New-UiFont -Family "Bahnschrift SemiBold" -Size 12.0
+$headerPanel.Controls.Add($headerOptimizeButton)
+
 $tabControl = New-Object System.Windows.Forms.TabControl
 $tabControl.Dock = [System.Windows.Forms.DockStyle]::Fill
 $tabControl.Appearance = [System.Windows.Forms.TabAppearance]::Normal
@@ -360,10 +392,11 @@ $null = $tabControl.TabPages.Add($overviewTab)
 $overviewLayout = New-Object System.Windows.Forms.TableLayoutPanel
 $overviewLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
 $overviewLayout.Padding = New-Object System.Windows.Forms.Padding(24, 18, 24, 18)
-$overviewLayout.RowCount = 3
+$overviewLayout.RowCount = 4
 $overviewLayout.ColumnCount = 2
 $null = $overviewLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
 $null = $overviewLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
+$null = $overviewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 180)))
 $null = $overviewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150)))
 $null = $overviewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150)))
 $null = $overviewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
@@ -406,10 +439,61 @@ $script:ChannelValueLabel = $null
 $script:PublisherValueLabel = $null
 $script:AdminValueLabel = $null
 
-$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Installed Version" -ValueLabelRef ([ref]$script:VersionValueLabel)), 0, 0)
-$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Update Channel" -ValueLabelRef ([ref]$script:ChannelValueLabel)), 1, 0)
-$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Publisher" -ValueLabelRef ([ref]$script:PublisherValueLabel)), 0, 1)
-$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Running As Admin" -ValueLabelRef ([ref]$script:AdminValueLabel)), 1, 1)
+$optimizePanel = New-Object System.Windows.Forms.Panel
+$optimizePanel.Dock = [System.Windows.Forms.DockStyle]::Fill
+$optimizePanel.Margin = New-Object System.Windows.Forms.Padding(8)
+$optimizePanel.BackColor = $script:Theme.Ink
+$optimizePanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$overviewLayout.SetColumnSpan($optimizePanel, 2)
+$null = $overviewLayout.Controls.Add($optimizePanel, 0, 0)
+
+$optimizeTitleLabel = New-Object System.Windows.Forms.Label
+$optimizeTitleLabel.Text = "One-Click Optimize"
+$optimizeTitleLabel.ForeColor = [System.Drawing.Color]::White
+$optimizeTitleLabel.Location = New-Object System.Drawing.Point(18, 18)
+$optimizeTitleLabel.AutoSize = $true
+$optimizeTitleLabel.Font = New-UiFont -Family "Bahnschrift SemiBold" -Size 24.0
+$optimizePanel.Controls.Add($optimizeTitleLabel)
+
+$optimizeLeadLabel = New-Object System.Windows.Forms.Label
+$optimizeLeadLabel.Text = "Clean junk files and local privacy traces in one pass, then refresh the dashboard so you can see what changed."
+$optimizeLeadLabel.ForeColor = [System.Drawing.Color]::FromArgb(212, 223, 219)
+$optimizeLeadLabel.Location = New-Object System.Drawing.Point(20, 56)
+$optimizeLeadLabel.Size = New-Object System.Drawing.Size(700, 40)
+$optimizeLeadLabel.Font = New-UiFont -Family "Segoe UI" -Size 10.0
+$optimizePanel.Controls.Add($optimizeLeadLabel)
+
+$script:OptimizeStatsLabel = New-Object System.Windows.Forms.Label
+$script:OptimizeStatsLabel.ForeColor = [System.Drawing.Color]::White
+$script:OptimizeStatsLabel.Location = New-Object System.Drawing.Point(20, 110)
+$script:OptimizeStatsLabel.Size = New-Object System.Drawing.Size(760, 24)
+$script:OptimizeStatsLabel.Font = New-UiFont -Family "Segoe UI Semibold" -Size 10.0
+$optimizePanel.Controls.Add($script:OptimizeStatsLabel)
+
+$script:OptimizeHintLabel = New-Object System.Windows.Forms.Label
+$script:OptimizeHintLabel.ForeColor = [System.Drawing.Color]::FromArgb(212, 223, 219)
+$script:OptimizeHintLabel.Location = New-Object System.Drawing.Point(20, 136)
+$script:OptimizeHintLabel.Size = New-Object System.Drawing.Size(760, 24)
+$script:OptimizeHintLabel.Font = New-UiFont -Family "Segoe UI" -Size 9.0
+$optimizePanel.Controls.Add($script:OptimizeHintLabel)
+
+$overviewOptimizeButton = New-FlatButton -Text "Optimize Computer" -Width 190 -Height 48 -BackColor $script:Theme.Accent
+$overviewOptimizeButton.Location = New-Object System.Drawing.Point(860, 34)
+$overviewOptimizeButton.Font = New-UiFont -Family "Bahnschrift SemiBold" -Size 12.0
+$optimizePanel.Controls.Add($overviewOptimizeButton)
+
+$overviewOptimizeNote = New-Object System.Windows.Forms.Label
+$overviewOptimizeNote.Text = "Safe mode: no startup changes, no duplicate deletion."
+$overviewOptimizeNote.ForeColor = [System.Drawing.Color]::White
+$overviewOptimizeNote.Location = New-Object System.Drawing.Point(836, 92)
+$overviewOptimizeNote.Size = New-Object System.Drawing.Size(250, 36)
+$overviewOptimizeNote.Font = New-UiFont -Family "Segoe UI" -Size 9.0
+$optimizePanel.Controls.Add($overviewOptimizeNote)
+
+$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Installed Version" -ValueLabelRef ([ref]$script:VersionValueLabel)), 0, 1)
+$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Update Channel" -ValueLabelRef ([ref]$script:ChannelValueLabel)), 1, 1)
+$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Publisher" -ValueLabelRef ([ref]$script:PublisherValueLabel)), 0, 2)
+$null = $overviewLayout.Controls.Add((New-InfoCard -Heading "Running As Admin" -ValueLabelRef ([ref]$script:AdminValueLabel)), 1, 2)
 
 $updatePanel = New-Object System.Windows.Forms.Panel
 $updatePanel.Dock = [System.Windows.Forms.DockStyle]::Fill
@@ -417,7 +501,7 @@ $updatePanel.Margin = New-Object System.Windows.Forms.Padding(8)
 $updatePanel.BackColor = $script:Theme.Surface
 $updatePanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $overviewLayout.SetColumnSpan($updatePanel, 2)
-$null = $overviewLayout.Controls.Add($updatePanel, 0, 2)
+$null = $overviewLayout.Controls.Add($updatePanel, 0, 3)
 
 $updateHeading = New-SectionLabel -Text "Update Controls"
 $updateHeading.Location = New-Object System.Drawing.Point(18, 18)
@@ -743,9 +827,38 @@ $openReleasesButton.Add_Click({
     }
 })
 
+function Start-QuickOptimizeFromGui {
+    $result = [System.Windows.Forms.MessageBox]::Show(
+        "Quick Optimize will clean junk files and clear local privacy traces. Continue?",
+        "Optimize Computer",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    if ($result -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+
+    Invoke-UiAction -SuccessMessage "Quick optimization completed." -Action {
+        $summary = Invoke-QuickOptimize
+        Refresh-Overview
+        Refresh-JunkTab
+        Refresh-PrivacyTab
+        [System.Windows.Forms.MessageBox]::Show(
+            ("Optimization finished.`n`nEstimated space reclaimed: {0}`nPrivacy traces cleared: {1}" -f (Format-Bytes ([long]$summary.ReclaimedBytes)), $summary.ClearedTraces),
+            "PC Optimizer",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        ) | Out-Null
+    }
+}
+
+$headerOptimizeButton.Add_Click({ Start-QuickOptimizeFromGui })
+$overviewOptimizeButton.Add_Click({ Start-QuickOptimizeFromGui })
+
 $refreshJunkButton.Add_Click({
     Invoke-UiAction -SuccessMessage "Junk scan refreshed." -Action {
         Refresh-JunkTab
+        Refresh-Overview
     }
 })
 
@@ -763,6 +876,7 @@ $cleanJunkButton.Add_Click({
     Invoke-UiAction -SuccessMessage "Junk cleanup completed." -Action {
         Invoke-JunkCleanup | Out-Null
         Refresh-JunkTab
+        Refresh-Overview
     }
 })
 
@@ -801,6 +915,7 @@ $restoreStartupButton.Add_Click({
 $refreshPrivacyButton.Add_Click({
     Invoke-UiAction -SuccessMessage "Privacy report refreshed." -Action {
         Refresh-PrivacyTab
+        Refresh-Overview
     }
 })
 
@@ -818,6 +933,7 @@ $clearPrivacyButton.Add_Click({
     Invoke-UiAction -SuccessMessage "Privacy traces cleared." -Action {
         Clear-PrivacyTraces | Out-Null
         Refresh-PrivacyTab
+        Refresh-Overview
     }
 })
 

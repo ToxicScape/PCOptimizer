@@ -120,6 +120,7 @@ $distDir = Join-Path $ProjectRoot "dist"
 $packagePath = Join-Path $distDir ("PCOptimizer-{0}.zip" -f $tagName)
 $latestManifestPath = Join-Path $distDir "latest.json"
 $installScriptPath = Join-Path $distDir "Install-PCOptimizer.ps1"
+$installBootstrapPath = Join-Path $distDir "Install-PCOptimizer.bat"
 $releaseDraftUrl = Get-ReleaseDraftUrl -RootPath $ProjectRoot
 
 Write-Host ""
@@ -127,6 +128,7 @@ Write-Host "Upload these files to the GitHub Release:"
 Write-Host ("- {0}" -f $packagePath)
 Write-Host ("- {0}" -f $latestManifestPath)
 Write-Host ("- {0}" -f $installScriptPath)
+Write-Host ("- {0}" -f $installBootstrapPath)
 
 if ($releaseDraftUrl) {
     $releaseTagUrl = ("{0}?tag={1}" -f $releaseDraftUrl, $tagName)

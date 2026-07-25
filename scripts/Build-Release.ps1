@@ -50,6 +50,7 @@ foreach ($path in @($OutputDir, $stagingDir)) {
 New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
 $itemsToPackage = @(
+    "Install-PCOptimizer.bat",
     "PCOptimizer.ps1",
     "PCOptimizer.GUI.ps1",
     "Run-PCOptimizer.bat",
@@ -87,6 +88,7 @@ $latestManifest = [pscustomobject]@{
 
 ($latestManifest | ConvertTo-Json -Depth 6) | Set-Content -LiteralPath (Join-Path $OutputDir "latest.json") -Encoding UTF8
 Copy-Item -LiteralPath $installScriptPath -Destination (Join-Path $OutputDir "Install-PCOptimizer.ps1") -Force
+Copy-Item -LiteralPath (Join-Path $ProjectRoot "Install-PCOptimizer.bat") -Destination (Join-Path $OutputDir "Install-PCOptimizer.bat") -Force
 
 Write-Host ("Created release assets in {0}" -f $OutputDir)
 Write-Host ("Package: {0}" -f $packagePath)
