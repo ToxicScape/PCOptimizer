@@ -9,6 +9,29 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Invoke-WithRetry {
+    param(
+        [scriptblock]$Action,
+        [int]$MaxAttempts = 6,
+        [int]$DelayMilliseconds = 700,
+        [string]$OperationName = "operation"
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            & $Action
+            return
+        } catch {
+            if ($attempt -ge $MaxAttempts) {
+                throw
+            }
+
+            Write-Host ("Retrying {0} after transient file lock (attempt {1}/{2})..." -f $OperationName, $attempt, $MaxAttempts)
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+    }
+}
+
 if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
     $ProjectRoot = Split-Path -Parent $PSScriptRoot
 }
@@ -42,7 +65,9 @@ if ($GitHubOwner -and $GitHubRepo -and $GitHubOwner -notlike "YOUR_*" -and $GitH
 
 foreach ($path in @($OutputDir, $stagingDir)) {
     if (Test-Path -LiteralPath $path) {
-        Remove-Item -LiteralPath $path -Force -Recurse
+        Invoke-WithRetry -OperationName ("remove " + $path) -Action {
+            Remove-Item -LiteralPath $path -Force -Recurse
+        }
     }
     New-Item -ItemType Directory -Path $path -Force | Out-Null
 }
@@ -67,10 +92,15 @@ foreach ($item in $itemsToPackage) {
     }
 
     $destinationPath = Join-Path $packageDir $item
-    Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Recurse -Force
+    Invoke-WithRetry -OperationName ("copy " + $item) -Action {
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Recurse -Force
+    }
 }
 
-Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $packagePath -Force
+Start-Sleep -Milliseconds 400
+Invoke-WithRetry -OperationName "create release zip" -Action {
+    Compress-Archive -Path (Join-Path $packageDir "*") -DestinationPath $packagePath -Force
+}
 
 $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
 

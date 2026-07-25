@@ -54,12 +54,42 @@ function Invoke-Git {
         [string]$WorkingDirectory
     )
 
-    $output = & git -C $WorkingDirectory @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw ($output -join [Environment]::NewLine)
+    function Quote-CmdValue {
+        param([string]$Value)
+        return '"' + ($Value -replace '"', '""') + '"'
     }
 
-    return @($output)
+    $stdoutPath = Join-Path $env:TEMP ("pcoptimizer-git-out-" + [guid]::NewGuid().Guid + ".log")
+    $stderrPath = Join-Path $env:TEMP ("pcoptimizer-git-err-" + [guid]::NewGuid().Guid + ".log")
+
+    try {
+        $commandParts = @("git.exe", "-C", (Quote-CmdValue $WorkingDirectory))
+        foreach ($argument in $Arguments) {
+            $commandParts += (Quote-CmdValue $argument)
+        }
+        $commandLine = (($commandParts -join " ") + " 1>" + (Quote-CmdValue $stdoutPath) + " 2>" + (Quote-CmdValue $stderrPath))
+        $process = Start-Process -FilePath cmd.exe -ArgumentList @("/d", "/c", $commandLine) -PassThru -Wait -NoNewWindow
+        $exitCode = $process.ExitCode
+
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { @(Get-Content -LiteralPath $stdoutPath -ErrorAction SilentlyContinue) } else { @() }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { @(Get-Content -LiteralPath $stderrPath -ErrorAction SilentlyContinue) } else { @() }
+
+        foreach ($line in $stderr) {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                Write-Host $line
+            }
+        }
+
+        if ($exitCode -ne 0) {
+            $combined = @($stdout + $stderr) -join [Environment]::NewLine
+            throw $combined
+        }
+
+        return @($stdout)
+    } finally {
+        Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 if (-not (Test-Path -LiteralPath $ProjectRoot)) {
