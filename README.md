@@ -1,6 +1,6 @@
 # PC Optimizer
 
-Windows utility written in PowerShell for:
+Windows utility written in PowerShell with a desktop GUI for:
 
 - Junk-file cleanup
 - Startup-item management
@@ -10,7 +10,8 @@ Windows utility written in PowerShell for:
 
 ## Project layout
 
-- `PCOptimizer.ps1`: main app
+- `PCOptimizer.ps1`: core optimizer logic and CLI entry point
+- `PCOptimizer.GUI.ps1`: Windows desktop interface
 - `Run-PCOptimizer.bat`: local launcher
 - `version.json`: current app version
 - `appsettings.json`: GitHub release/update settings
@@ -22,11 +23,13 @@ Windows utility written in PowerShell for:
 
 ## Local usage
 
-Run the app directly:
+Run the visual app:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\PCOptimizer.ps1
+powershell -STA -ExecutionPolicy Bypass -File .\PCOptimizer.GUI.ps1
 ```
+
+Or double-click `Run-PCOptimizer.bat`.
 
 Show version:
 

@@ -39,6 +39,7 @@ if (-not (Test-Path -LiteralPath $InstallDir)) {
 
 $itemsToCopy = @(
     "PCOptimizer.ps1",
+    "PCOptimizer.GUI.ps1",
     "Run-PCOptimizer.bat",
     "README.md",
     "appsettings.json",

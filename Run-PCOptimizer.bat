@@ -1,3 +1,3 @@
 @echo off
 setlocal
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0PCOptimizer.ps1"
+powershell -WindowStyle Hidden -STA -NoProfile -ExecutionPolicy Bypass -File "%~dp0PCOptimizer.GUI.ps1"

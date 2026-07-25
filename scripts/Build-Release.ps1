@@ -51,6 +51,7 @@ New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
 $itemsToPackage = @(
     "PCOptimizer.ps1",
+    "PCOptimizer.GUI.ps1",
     "Run-PCOptimizer.bat",
     "README.md",
     "appsettings.json",

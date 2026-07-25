@@ -1198,6 +1198,11 @@ function Start-InteractiveMenu {
     }
 }
 
+if ($script:PCOptimizerImportOnly) {
+    Ensure-AppState
+    return
+}
+
 Ensure-AppState
 
 try {
