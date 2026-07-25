@@ -1,3 +1,5 @@
 dist/
 release-staging/
 *.zip
+release-assets/
+gcm-diagnose.log

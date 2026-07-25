@@ -17,6 +17,7 @@ Windows utility written in PowerShell for:
 - `scripts\Install-PCOptimizer.ps1`: installs the app for the current user
 - `scripts\Uninstall-PCOptimizer.ps1`: removes the installed app
 - `scripts\Build-Release.ps1`: builds release assets
+- `scripts\Publish-ManualRelease.ps1`: build, commit, tag, push, and open the GitHub release page
 - `.github\workflows\release.yml`: GitHub Actions release workflow
 
 ## Local usage
@@ -61,45 +62,33 @@ Default install location:
 
 That installer copies the app files and creates Desktop and Start Menu shortcuts.
 
-## Set up GitHub updates
+## Easiest release flow
 
-1. Put this folder in its own Git repository.
-2. Create a GitHub repository for it.
-3. Edit `appsettings.json` and set:
+When you want to ship an update, run one command:
 
-```json
-{
-  "githubOwner": "your-github-name",
-  "githubRepo": "your-repo-name"
-}
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Publish-ManualRelease.ps1 -Version 0.1.1
 ```
 
-4. Commit the project and push it to GitHub.
-5. Create a version tag like `v0.1.0`.
-6. Push the tag.
+That script will:
 
-The included workflow will build and publish:
+- update `version.json`
+- build the release files into `.\dist`
+- commit the release changes
+- create the git tag
+- push `main` and the tag
+- open the GitHub release page for that tag
 
-- `PCOptimizer-v0.1.0.zip`
+Then upload the three files it prints:
+
+- `PCOptimizer-v0.1.1.zip`
 - `latest.json`
 - `Install-PCOptimizer.ps1`
 
-The app checks:
-
-```text
-https://github.com/<owner>/<repo>/releases/latest/download/latest.json
-```
-
-## Build release assets manually
+If you do not want it to push yet:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\Build-Release.ps1
-```
-
-Output goes to:
-
-```text
-.\dist
+powershell -ExecutionPolicy Bypass -File .\scripts\Publish-ManualRelease.ps1 -Version 0.1.1 -NoPush -NoOpenReleasePage
 ```
 
 ## Update flow
@@ -111,7 +100,7 @@ Output goes to:
 
 ## Important notes
 
-- `appsettings.json` ships with placeholder GitHub values. Updates will not work until you replace them.
+- `appsettings.json` is already pointed at `ToxicScape/PCOptimizer`.
 - Duplicate cleanup uses quarantine under `%LOCALAPPDATA%\PCOptimizer\Quarantine` instead of hard delete.
 - Running cleanup as administrator improves access to system temp locations.
 - This is a practical release system for a PowerShell app, not a signed commercial installer pipeline.
